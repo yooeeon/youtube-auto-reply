@@ -159,24 +159,26 @@ async def get_top_comments(cfg: Config, video_id: str, n: int = 20) -> list[dict
 
 # ── 목록 필터 ─────────────────────────────────────────────────────────
 SHORTS_MAX_SEC = 180
-LONG_MAX_SEC = 60 * 60  # 1시간 넘는 몰아보기·오디오 사연은 장면을 짚기 어려워 제외
+LONG_MAX_SEC = 90 * 60  # 1시간 30분 넘는 몰아보기·오디오 사연은 장면을 짚기 어려워 제외
 # 음악·스포츠·게임·뉴스·과학기술·자동차 카테고리는 연애 고민 영상이 아님
 EXCLUDED_CATEGORIES = {"10", "17", "20", "25", "28", "2"}
 
 
-DEFAULT_EXCLUDE_WORDS = [
+# 제목·채널 이름에 있으면 제외. 짧은 단어는 다른 말 속에 섞여 오탐이 나므로(예: '여주가'의 '주가',
+# '보살피다'의 '보살', '사주는'의 '사주') 정규식으로 앞뒤를 확인한다.
+DEFAULT_EXCLUDE_PATTERNS = [
     # 음악
-    "전곡듣기", "플레이리스트", "playlist", "Playlist", "[MV]", "OST", "발라드", "노래", "가사",
+    r"전곡\s?듣기", r"플레이리스트", r"(?i)playlist", r"\[MV\]", r"\bOST\b", r"발라드", r"노래(?!방)", r"\[가사\]",
     # 주식·뉴스
-    "상장", "공시", "주가", "속보",
+    r"상장폐지", r"공시", r"(?<![가-힣])주가(?![가-힣])", r"증시", r"속보",
     # 운세 경쟁 채널 (운명원 홍보가 경쟁사 광고처럼 보임)
-    "타로", "사주", "운세", "점사", "신점", "보살",
+    r"타로", r"사주(?=\s|$|풀이|팔자|운세|궁합|\]|\))", r"운세", r"점사", r"신점", r"(?<![가-힣])보살(?![피펴핌])", r"점집",
 ]
 
 
-def excluded_by_title(m: dict, words: list[str]) -> bool:
+def excluded_by_title(m: dict, patterns: list[str] | None = None) -> bool:
     text = f"{m.get('title') or ''} {m.get('channel_title') or ''}"
-    return any(w in text for w in words)
+    return any(re.search(p, text) for p in (patterns or DEFAULT_EXCLUDE_PATTERNS))
 
 
 def matches_keywords(m: dict, keywords: list[str]) -> bool:
@@ -186,16 +188,19 @@ def matches_keywords(m: dict, keywords: list[str]) -> bool:
         return True
     # 설명에만 있으면, 채널 이름에 들어간 키워드(예: 썸타임즈의 '썸')는 근거로 치지 않음
     return any(k in desc and k not in ch for k in keywords)
-def is_postable(m: dict) -> tuple[bool, str]:
-    """쇼츠·라이브·댓글 꺼짐 제외 (D-07)."""
+
+
+def is_postable(m: dict, allow_shorts: bool = False) -> tuple[bool, str]:
+    """쇼츠·라이브·댓글 꺼짐 제외 (D-07). 뜨기 직전 목록은 초안까지만이라 쇼츠도 허용."""
     if m.get("live") or m.get("was_live"):
         return False, "라이브 방송"
     if m.get("category_id") in EXCLUDED_CATEGORIES:
         return False, "연애와 무관한 카테고리"
     if (m.get("duration_sec") or 0) > LONG_MAX_SEC:
-        return False, "1시간 넘는 영상"
+        return False, "1시간 30분 넘는 영상"
     # 쇼츠는 최대 3분까지 가능 → 3분 이하는 제외 (쇼츠는 댓글 UI가 달라 게시 실패율이 높음)
-    if (m.get("duration_sec") or 0) <= SHORTS_MAX_SEC:
+    m["is_short"] = (m.get("duration_sec") or 0) <= SHORTS_MAX_SEC
+    if m["is_short"] and not allow_shorts:
         return False, "쇼츠"
     if m.get("comment_count") is None and m.get("_source") == "api":
         return False, "댓글 꺼짐"
@@ -220,12 +225,12 @@ def _save(metas: list[dict], source: str) -> None:
             )
 
 
-def _decorate(metas: list[dict], source: str) -> list[dict]:
+def _decorate(metas: list[dict], source: str, allow_shorts: bool = False) -> list[dict]:
     done = store.commented_video_ids()
     out = []
     for m in metas:
         m["_source"] = "api" if source != "ytdlp" else "ytdlp"
-        ok, why = is_postable(m)
+        ok, why = is_postable(m, allow_shorts)
         if not ok:
             continue
         m["commented"] = m["video_id"] in done
@@ -235,19 +240,28 @@ def _decorate(metas: list[dict], source: str) -> list[dict]:
 
 # ── 검색 ─────────────────────────────────────────────────────────────
 async def _search_ids_api(
-    cfg: Config, query: str, published_after: datetime, limit: int = 50, durations: tuple[str, ...] = ("medium", "long")
+    cfg: Config, query: str, published_after: datetime,
+    plan: tuple[tuple[str, int], ...] = (("medium", 2), ("long", 2)),
 ) -> list[str]:
-    """최신순 검색. 최신 결과는 대부분 쇼츠라서 4~20분(medium)·20분 이상(long) 영상만 따로 검색해 합친다.
-    할당량: search.list 1회 = 100 units → 불러오기 1번에 200 units."""
-    def run(duration: str) -> list[str]:
-        r = _api(cfg).search().list(
-            part="id", q=query, type="video", order="date", regionCode="KR", relevanceLanguage="ko",
-            publishedAfter=published_after.strftime("%Y-%m-%dT%H:%M:%SZ"), maxResults=min(limit, 50),
-            videoDuration=duration,
-        ).execute()
-        return [it["id"]["videoId"] for it in r.get("items", [])]
+    """최신순 검색. 최신 결과는 대부분 쇼츠라서 길이별(medium 4~20분, long 20분+, any 전체)로 따로,
+    길이마다 지정한 페이지 수(1페이지 50개)만큼 검색해 합친다.
+    할당량: search.list 1페이지 = 100 units (하루 기본 10,000)."""
+    def run(duration: str, pages: int) -> list[str]:
+        ids: list[str] = []
+        token = None
+        for _ in range(pages):
+            r = _api(cfg).search().list(
+                part="id", q=query, type="video", order="date", regionCode="KR", relevanceLanguage="ko",
+                publishedAfter=published_after.strftime("%Y-%m-%dT%H:%M:%SZ"), maxResults=50,
+                videoDuration=duration, pageToken=token,
+            ).execute()
+            ids += [it["id"]["videoId"] for it in r.get("items", [])]
+            token = r.get("nextPageToken")
+            if not token:
+                break
+        return ids
 
-    results = await asyncio.gather(*(asyncio.to_thread(run, d) for d in durations))
+    results = await asyncio.gather(*(asyncio.to_thread(run, d, p) for d, p in plan))
     seen: list[str] = []
     for ids in results:
         seen += [i for i in ids if i not in seen]
@@ -273,13 +287,13 @@ async def _search_ids_ytdlp(query: str, limit: int) -> list[str]:
 async def search_latest(cfg: Config) -> list[dict]:
     s = cfg.raw.get("search", {})
     keywords = s.get("keywords", ["연애"])
-    days, limit = s.get("days", 7), s.get("max_results", 25)
+    days, limit, pages = s.get("days", 7), s.get("max_results", 60), s.get("pages", 2)
     query = "|".join(keywords)  # YouTube 검색 OR 문법
     if cfg.youtube_api_key:
-        ids = await _search_ids_api(cfg, query, datetime.now(timezone.utc) - timedelta(days=days))
-        exclude = s.get("exclude_title_words", DEFAULT_EXCLUDE_WORDS)
+        ids = await _search_ids_api(cfg, query, datetime.now(timezone.utc) - timedelta(days=days),
+                                    (("medium", pages), ("long", pages)))
         metas = [m for m in await get_videos(cfg, ids)
-                 if matches_keywords(m, keywords) and not excluded_by_title(m, exclude)]
+                 if matches_keywords(m, keywords) and not excluded_by_title(m)]
         src = "search"
     else:
         ids = await _search_ids_ytdlp(" ".join(keywords[:2]), min(limit, 12))
@@ -297,20 +311,22 @@ async def find_rising(cfg: Config) -> list[dict]:
     kw, hours = r.get("keyword", "연애"), r.get("hours", 48)
     lo, hi, vph = r.get("min_views", 1000), r.get("max_views", 5000), r.get("min_views_per_hour", 150)
     if cfg.youtube_api_key:
-        ids = await _search_ids_api(cfg, kw, datetime.now(timezone.utc) - timedelta(hours=hours))
+        # 쇼츠까지 포함(any)해 넓게 + 일반 길이 영상은 따로 한 번 더 (초안까지만이라 쇼츠도 대상)
+        pages = r.get("pages", 3)
+        ids = await _search_ids_api(cfg, kw, datetime.now(timezone.utc) - timedelta(hours=hours),
+                                    (("any", pages), ("medium", 2), ("long", 1)))
         src = "rising"
     else:
         ids = await _search_ids_ytdlp(kw, 20)
         src = "ytdlp"
-    exclude = cfg.raw.get("search", {}).get("exclude_title_words", DEFAULT_EXCLUDE_WORDS)
-    metas = [m for m in await get_videos(cfg, ids) if not excluded_by_title(m, exclude)]
+    metas = [m for m in await get_videos(cfg, ids) if not excluded_by_title(m)]
     hits = [
         m for m in metas
         if m.get("published_at") and _hours_since(m["published_at"]) <= hours
         and lo <= (m.get("view_count") or 0) <= hi and (m.get("views_per_hour") or 0) >= vph
     ]
     hits.sort(key=lambda m: m.get("views_per_hour") or 0, reverse=True)
-    out = _decorate(hits, src)
+    out = _decorate(hits, src, allow_shorts=True)
     _save(out, "rising")
     return out
 

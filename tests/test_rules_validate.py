@@ -118,3 +118,20 @@ def test_recover_interrupted(cfg):
     r = rules.reserve(cfg, video_id="AAAAAAAAAAA", comment_text="x")
     assert store.recover_interrupted() == 1
     assert store.get_attempt(r.attempt_id)["status"] == "unverified"
+
+
+# ── 영상 목록 제외어 (오탐 방지) ──
+@pytest.mark.parametrize("title,excluded", [
+    ("환승연애 PD가 된 여주가 전 남친을 섭외할 때", False),   # '여주가'의 '주가'
+    ("연인을 보살피는 남자의 특징", False),                  # '보살피다'
+    ("선물 사주는 남자 심리", False),                        # '사주다'
+    ("노래방 데이트에서 생긴 일", False),
+    ("[타로] 그 사람 속마음", True),
+    ("2026 사주 궁합 보는 법", True),
+    ("썸에이지 상장폐지 우려", True),
+    ("[MV] 착한 이별", True),
+    ("이별 발라드 모음", True),
+])
+def test_exclude_patterns(title, excluded):
+    from app.youtube import excluded_by_title
+    assert excluded_by_title({"title": title, "channel_title": ""}) is excluded

@@ -99,7 +99,7 @@ async def status(video_id: str | None = None):
 # ── ① 영상 불러오기 ───────────────────────────────────────────────────
 def _public(m: dict, tab: str) -> dict:
     keep = ("video_id", "title", "channel_title", "published_at", "thumbnail_url", "duration_sec",
-            "view_count", "comment_count", "views_per_hour", "commented")
+            "view_count", "comment_count", "views_per_hour", "commented", "is_short")
     out = {k: m.get(k) for k in keep}
     out["tab"] = tab
     return out

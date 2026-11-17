@@ -21,9 +21,11 @@ browser:
 search:
   keywords: [연애, 썸, 남자심리, 여자심리, 이별, 재회, 짝사랑]
   days: 7
-  max_results: 25
+  pages: 2                 # 길이(4~20분 / 20분+)마다 검색할 페이지 수(1페이지 50개, 100 units) → 불러오기 1번 400 units
+  max_results: 60
 
-rising: { keyword: 연애, hours: 48, min_views: 1000, max_views: 5000, min_views_per_hour: 150 }
+# 뜨기 직전: 초안까지만 만들므로 쇼츠도 포함. 찾기 1번 = (pages + 3) × 100 units
+rising: { keyword: 연애, hours: 48, min_views: 1000, max_views: 5000, min_views_per_hour: 150, pages: 3 }
 
 llm:
   backend: auto            # auto: API 키 있으면 api, 없으면 cli(로그인된 Claude Code = 구독 사용)

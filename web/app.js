@@ -132,7 +132,7 @@ function renderTabHint() {
   $("#btn-load").textContent = S.tab === "latest" ? "영상 불러오기" : "🔥 뜨기 직전 영상 찾기";
   $("#tab-hint").textContent = S.tab === "latest"
     ? "최근 7일 연애 영상을 최신순으로 불러와요. (쇼츠·라이브·노래 영상 제외)"
-    : "‘연애’ 영상 중 최근 48시간 · 조회수 1,000~5,000 · 시간당 150회 이상. 초안까지만 만들어요.";
+    : "‘연애’ 영상 중 최근 48시간 · 조회수 1,000~5,000 · 시간당 150회 이상 (쇼츠 포함). 초안까지만 만들어요.";
 }
 
 function renderList() {
@@ -156,6 +156,7 @@ function renderList() {
         <div class="vbadges">
           ${v.commented ? `<span class="chip ok">✓ 댓글 완료</span>` : ""}
           ${v.tab === "rising" ? `<span class="chip fire">🔥 시간당 ${fmtNum(Math.round(v.views_per_hour))}회</span>` : ""}
+          ${v.is_short ? `<span class="chip">쇼츠</span>` : ""}
           ${v._linked ? `<span class="chip accent">링크로 추가</span>` : ""}
           ${v.warning ? `<span class="chip warn">${esc(v.warning)}</span>` : ""}
         </div>
