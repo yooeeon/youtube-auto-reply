@@ -49,6 +49,12 @@ async def analyze(cfg: Config, video_id: str, progress: Progress = _noop, force:
             row = store.connect().execute("SELECT * FROM analyses WHERE video_id=?", (video_id,)).fetchone()
         if row:
             a = json.loads(row["scenes_json"])
+            if "transcript_excerpt" not in a:  # 예전 분석: 심사용 자막 일부를 채워 넣음 (AI 호출 없음)
+                tr = await fetch_transcript(video_id)
+                a["transcript_excerpt"] = tr.to_prompt(6000) if tr.available else ""
+                with store._lock:
+                    store.connect().execute("UPDATE analyses SET scenes_json=? WHERE video_id=?",
+                                            (json.dumps(a, ensure_ascii=False), video_id))
             return a
 
     progress("영상 정보 불러오는 중")

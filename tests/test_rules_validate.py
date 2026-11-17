@@ -135,3 +135,22 @@ def test_recover_interrupted(cfg):
 def test_exclude_patterns(title, excluded):
     from app.youtube import excluded_by_title
     assert excluded_by_title({"title": title, "channel_title": ""}) is excluded
+
+
+# ── 단정 평판 금지, 전해 들은 말투 허용 (D-16) ──
+BASE = "관성이라는 말 나올 정도면 기준은 결혼까지 갈 인연인지예요. 두 사람 궁합과 결혼운은 연애사주로 짚어 볼 수 있는데 운명원이 "
+
+
+@pytest.mark.parametrize("tail,ok", [
+    ("그쪽으로 유명해요", False),
+    ("잘 본다고 소문났어요", False),
+    ("그쪽으로 이름난 데예요", False),
+    ("잘 본대요", True),
+    ("괜찮대요", True),
+    ("궁합 잘 본다던데요", True),
+])
+def test_asserted_fame(tail, ok):
+    checks = validate(BASE + tail, CFG)
+    fame = next(c for c in checks if c.key == "no_asserted_fame")
+    assert fame.ok is ok
+    assert next(c for c in checks if c.key == "no_fake_review").ok

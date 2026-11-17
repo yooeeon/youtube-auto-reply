@@ -25,6 +25,8 @@ FAKE_REVIEW_PATTERNS = [
 ]
 REVIEW_WINDOW = 25  # 브랜드 앞뒤 글자 수
 HYPE_WORDS = ["최고", "1위", "무조건", "강추", "대박"]
+# 확인되지 않은 평판을 사실처럼 단정하는 표현 → 작위적 (D-16). "잘 본대요/괜찮대요" 같은 전해 들은 말투를 쓴다.
+ASSERTED_FAME_RE = re.compile(r"유명|소문(?:났|난|이 났|이 자자)|이름난|이름 난|정평|알려져 있|명성")
 
 
 @dataclass
@@ -91,6 +93,10 @@ def validate(
         hits += [p for p in FAKE_REVIEW_PATTERNS if p in window]
     checks.append(Check("no_fake_review", "이용 후기 아님", not hits,
                         f"경험담으로 읽힐 수 있는 표현: {', '.join(sorted(set(hits)))}" if hits else ""))
+
+    fame = ASSERTED_FAME_RE.findall(text)
+    checks.append(Check("no_asserted_fame", "단정 평판 없음", not fame,
+                        f"'{fame[0]}' 대신 '잘 본대요/괜찮대요'처럼 써 주세요" if fame else ""))
 
     emoji_n = len(EMOJI_RE.findall(text))
     hype = [w for w in HYPE_WORDS if w in text]

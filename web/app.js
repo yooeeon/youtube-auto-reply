@@ -300,7 +300,7 @@ function renderDraft() {
     ${j ? `<div class="judge" id="judge"><b>AI 심사 ${j.total}점</b> · 맥락 ${j.uniqueness} · 자연스러움 ${j.naturalness} · 유도력 ${j.persuasion}<br/>${esc(j.reason)}</div>` : ""}
     ${d.needs_review ? `<div class="notice warn">심사 기준(3.8점)에 못 미쳐요. 다시 만들거나 직접 다듬어 주세요.</div>` : ""}
     ${alts ? `<div class="block-title">다른 후보 <span class="muted small">누르면 초안으로 바꿔요</span></div><div class="alts">${alts}</div>` : ""}
-    <div class="row"><span class="muted small">페르소나: 운명원 평판을 아는 조언자 · 이용 후기는 쓰지 않아요</span><button class="btn" id="btn-regen">↻ 다시 만들기</button></div>`;
+    <div class="row"><span class="muted small">페르소나: 운명원 얘기를 들어 본 조언자 · 이용 후기는 쓰지 않아요</span><button class="btn" id="btn-regen">↻ 다시 만들기</button></div>`;
   const ta = $("#draft");
   ta.oninput = () => { S.text = ta.value; S.draftId = null; $("#judge")?.remove(); renderEditState(); debounceValidate(); };
   renderEditState();
