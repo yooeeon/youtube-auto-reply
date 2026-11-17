@@ -151,7 +151,8 @@ function renderList() {
       <div>
         <div class="vtitle">${esc(v.title)}</div>
         <div class="vmeta one">${esc(v.channel_title)}</div>
-        <div class="vmeta one" title="올린 날짜 ${absDate(v.published_at)}">${shortDate(v.published_at)} · 조회 ${fmtNum(v.view_count)} · ${relTime(v.published_at)}</div>
+        <div class="vmeta one" title="올린 날짜 ${absDate(v.published_at)}">${shortDate(v.published_at)} · ${relTime(v.published_at)}</div>
+        <div class="vmeta one">조회 ${fmtNum(v.view_count)} · 댓글 ${v.comment_count != null ? fmtNum(v.comment_count) : "-"}</div>
         <div class="vbadges">
           ${v.commented ? `<span class="chip ok">✓ 댓글 완료</span>` : ""}
           ${v.tab === "rising" ? `<span class="chip fire">🔥 시간당 ${fmtNum(Math.round(v.views_per_hour))}회</span>` : ""}
@@ -256,7 +257,7 @@ function renderDraft() {
   const head = `
     <div class="vhead">
       <a class="thumb" href="https://www.youtube.com/watch?v=${v.video_id}" target="_blank" title="유튜브에서 열기"><img src="${esc(v.thumbnail_url)}" alt="" /><span class="dur">${fmtDur(v.duration_sec)}</span></a>
-      <div><h3>${esc(v.title)}</h3><div class="vmeta">${esc(v.channel_title)} · ${relTime(v.published_at)} · 조회 ${fmtNum(v.view_count)}</div>
+      <div><h3>${esc(v.title)}</h3><div class="vmeta">${esc(v.channel_title)} · ${relTime(v.published_at)} · 조회 ${fmtNum(v.view_count)}${v.comment_count != null ? ` · 댓글 ${fmtNum(v.comment_count)}` : ""}</div>
       ${S.draft ? `<div class="vbadges"><span class="chip">${TRANSCRIPT_LABEL[S.draft.transcript_source] || ""}</span></div>` : ""}</div>
     </div>`;
 
