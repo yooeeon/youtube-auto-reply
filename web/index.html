@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>운명원 댓글 에이전트</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">運</span>
+      <div>
+        <h1>운명원 댓글 에이전트</h1>
+        <p class="sub">① 영상을 불러와 → ② 골라서 초안을 확인하고 → ③ 댓글을 달아요. 테두리가 있는 칸이 지금 할 차례예요.</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="env" id="env"></div>
+      <div class="quota" id="quota" title="오늘(한국 시간 0시 기준) 게시한 댓글 수 / 하루 상한">
+        <span class="quota-label">오늘 게시</span>
+        <span class="quota-num"><b id="quota-used">0</b> / <span id="quota-max">10</span></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="setup" id="setup" hidden></div>
+
+  <main class="cols">
+    <!-- ① 영상 불러오기 -->
+    <section class="col" id="col1">
+      <div class="col-head">
+        <span class="step">1</span>
+        <h2>영상 불러오기</h2>
+      </div>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="latest" role="tab">최신 영상</button>
+        <button class="tab" data-tab="rising" role="tab" title="'연애' 키워드 · 조회수 1,000~5,000 · 시간당 150회 이상">🔥 뜨기 직전</button>
+      </div>
+      <div class="col1-actions">
+        <button class="btn primary block" id="btn-load">영상 불러오기</button>
+        <form class="link-form" id="link-form">
+          <input id="link-input" type="text" placeholder="유튜브 링크 붙여넣기" autocomplete="off" />
+          <button class="btn" type="submit">추가</button>
+        </form>
+        <p class="hint" id="tab-hint"></p>
+      </div>
+      <div class="list" id="video-list"></div>
+    </section>
+
+    <!-- ② 영상 선택 · 초안 -->
+    <section class="col" id="col2">
+      <div class="col-head">
+        <span class="step">2</span>
+        <h2>영상 선택 · 댓글 초안</h2>
+      </div>
+      <div class="col-body" id="draft-panel"></div>
+    </section>
+
+    <!-- ③ 댓글 달기 -->
+    <section class="col" id="col3">
+      <div class="col-head">
+        <span class="step">3</span>
+        <h2>댓글 달기</h2>
+      </div>
+      <div class="col-body">
+        <label class="field-label" for="profile-select">댓글 달 크롬 프로필</label>
+        <select id="profile-select"></select>
+        <p class="hint" id="profile-hint"></p>
+
+        <button class="btn primary big block" id="btn-post">댓글 달기</button>
+        <p class="blocked" id="post-blocked"></p>
+
+        <ol class="stepper" id="stepper"></ol>
+        <div id="post-result"></div>
+
+        <details class="profiles" id="profiles-box">
+          <summary>프로필 관리 (로그인 · 점검)</summary>
+          <div id="profiles"></div>
+          <p class="hint">처음 한 번은 [로그인]으로 일반 크롬을 열어 구글 로그인 후 ⌘Q로 닫으세요. 자동 제어 창은 로그인이 막혀 있어서 따로 해요.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <section class="history">
+    <div class="history-head">
+      <h2>기록 <span class="muted">어느 영상에 · 어느 프로필로 · 무슨 댓글을 · 결과 (최신순)</span></h2>
+      <span class="muted small" id="rules-note"></span>
+    </div>
+    <div class="history-body">
+      <table>
+        <thead><tr><th>시간</th><th>프로필</th><th>영상</th><th>댓글</th><th>결과</th><th></th></tr></thead>
+        <tbody id="history"></tbody>
+      </table>
+      <p class="empty small" id="history-empty">아직 기록이 없어요. 댓글을 달면 여기에 쌓여요.</p>
+    </div>
+  </section>
+
+  <div class="lightbox" id="lightbox" hidden><img alt="화면 캡처" /></div>
+  <div class="toast" id="toast" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

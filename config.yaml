@@ -1,0 +1,31 @@
+# 내 컴퓨터의 크롬 프로필 (자동화 전용 폴더. 크롬 기본 프로필은 자동 제어가 막혀 있어 따로 만든다)
+profiles:
+  - { name: 유튜브1, dir: ./chrome-profiles/youtube1 }
+  - { name: 유튜브2, dir: ./chrome-profiles/youtube2 }
+  - { name: 유튜브3, dir: ./chrome-profiles/youtube3 }
+
+comment: { min_chars: 40, max_chars: 120, brand: 운명원 }
+
+limits:
+  daily_max_comments: 10   # KST 0시 기준
+  min_interval_sec: 60     # 게시 간 최소 간격
+
+typing: { min_delay_ms: 70, max_delay_ms: 190 }
+
+browser:
+  layout: right            # right: 자동화 크롬을 화면 오른쪽 ~42%에 배치 (대시보드는 왼쪽에) / fixed: 아래 값 사용
+  window_size: [1100, 1000]
+  window_position: [820, 0]
+  keep_open_sec: 5         # 게시 후 창을 열어 두는 시간 (시연 땐 늘리기)
+
+search:
+  keywords: [연애, 썸, 남자심리, 여자심리, 이별, 재회, 짝사랑]
+  days: 7
+  max_results: 25
+
+rising: { keyword: 연애, hours: 48, min_views: 1000, max_views: 5000, min_views_per_hour: 150 }
+
+llm:
+  backend: auto            # auto: API 키 있으면 api, 없으면 cli(로그인된 Claude Code = 구독 사용)
+  model: claude-opus-5-5
+  candidates: 3
